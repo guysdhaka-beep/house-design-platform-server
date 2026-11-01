@@ -3,10 +3,14 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const compression = require("compression");
 
 const app = express();
 
+app.use(compression());
+
 app.use(cors());
+
 app.use(express.json());
 
 const adminRoutes = require("./routes/adminRoutes");
@@ -17,7 +21,10 @@ app.use("/api/houses", houseRoutes);
 
 app.use(
   "/uploads",
-  express.static(path.join(__dirname, "../uploads"))
+  express.static(path.join(__dirname, "../uploads"), {
+    maxAge: "365d",
+    immutable: true,
+  })
 );
 
 app.get("/", (req, res) => {
