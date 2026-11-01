@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model House {
+  id            Int      @id @default(autoincrement())
+
+  houseType     String
+  title         String
+  folder        String
+
+  length        Float
+  width         Float
+
+  foundation    Int
+  complete      Int
+
+  image3d       String?
+  image2d       String?
+
+  status        String   @default("Published")
+  isFeatured    Boolean  @default(false)
+
+  views         Int      @default(0)
+  likes         Int      @default(0)
+  comments      Int      @default(0)
+  shares        Int      @default(0)
+  saves         Int      @default(0)
+  downloads     Int      @default(0)
+  trendingScore Float    @default(0)
+
+  images        HouseImage[]
+  keywords      HouseKeyword[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model HouseImage {
+  id         Int      @id @default(autoincrement())
+
+  houseId    Int
+  house      House    @relation(fields: [houseId], references: [id], onDelete: Cascade)
+
+  type       String
+  image      String
+  sortOrder  Int      @default(1)
+
+  createdAt  DateTime @default(now())
+}
+
+model HouseKeyword {
+  id         Int      @id @default(autoincrement())
+
+  houseId    Int
+  house      House    @relation(fields: [houseId], references: [id], onDelete: Cascade)
+
+  language   String
+  keyword    String
+
+  createdAt  DateTime @default(now())
+}
+
+model Admin {
+  id        Int      @id @default(autoincrement())
+
+  username  String   @unique
+  password  String
+
+  createdAt DateTime @default(now())
+}
