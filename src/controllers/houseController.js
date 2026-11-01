@@ -85,10 +85,20 @@ exports.createHouse = async (req, res) => {
   }
 };
 
-// Get All Houses
+// Get All Houses (Server-side Pagination)
 exports.getAllHouses = async (req, res) => {
   try {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 15;
+
+    const skip = (page - 1) * limit;
+
+    const total = await prisma.house.count();
+
     const houses = await prisma.house.findMany({
+      skip,
+      take: limit,
+
       select: {
         id: true,
         title: true,
@@ -98,6 +108,7 @@ exports.getAllHouses = async (req, res) => {
         width: true,
         foundation: true,
         complete: true,
+
         images: {
           select: {
             type: true,
@@ -105,6 +116,7 @@ exports.getAllHouses = async (req, res) => {
           },
         },
       },
+
       orderBy: {
         id: "desc",
       },
@@ -114,6 +126,10 @@ exports.getAllHouses = async (req, res) => {
 
     res.json({
       success: true,
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
       houses,
     });
   } catch (error) {
