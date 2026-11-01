@@ -85,17 +85,28 @@ exports.createHouse = async (req, res) => {
   }
 };
 
-// Get All Houses (Server-side Pagination)
+// Get All Houses (Server-side Pagination + Type Filter)
 exports.getAllHouses = async (req, res) => {
   try {
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 15;
+    const type = req.query.type;
 
     const skip = (page - 1) * limit;
 
-    const total = await prisma.house.count();
+    const where = {};
+
+    if (type) {
+      where.houseType = type;
+    }
+
+    const total = await prisma.house.count({
+      where,
+    });
 
     const houses = await prisma.house.findMany({
+      where,
+
       skip,
       take: limit,
 
