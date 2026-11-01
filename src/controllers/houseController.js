@@ -89,13 +89,28 @@ exports.createHouse = async (req, res) => {
 exports.getAllHouses = async (req, res) => {
   try {
     const houses = await prisma.house.findMany({
-      include: {
-        images: true,
+      select: {
+        id: true,
+        title: true,
+        houseType: true,
+        folder: true,
+        length: true,
+        width: true,
+        foundation: true,
+        complete: true,
+        images: {
+          select: {
+            type: true,
+            image: true,
+          },
+        },
       },
       orderBy: {
         id: "desc",
       },
     });
+
+    res.set("Cache-Control", "public, max-age=300");
 
     res.json({
       success: true,
@@ -103,6 +118,7 @@ exports.getAllHouses = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
+
     res.status(500).json({
       success: false,
       message: "Server Error",
