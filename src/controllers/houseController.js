@@ -1,30 +1,14 @@
 
 const prisma = require("../prisma");
-const fs = require("fs");
-const path = require("path");
 
-// Upload folder paths
-const uploadFolders = {
-  "3d": path.resolve(__dirname, "../../uploads/3d"),
-  "2d": path.resolve(__dirname, "../../uploads/2d"),
-};
+const cloudinary = require("../cloudinary");
 
-// Safely delete uploaded image
-function removeImageFile(type, filename) {
-  if (!filename || !uploadFolders[type]) return;
-
-  const filePath = path.join(uploadFolders[type], path.basename(filename));
-
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
-  }
-}
 
 // Create House
 exports.createHouse = async (req, res) => {
   try {
-    const image3d = req.files?.image3d?.[0]?.filename || null;
-    const image2d = req.files?.image2d?.[0]?.filename || null;
+    const image3d = req.files?.image3d?.[0]?.path || null;
+    const image2d = req.files?.image2d?.[0]?.path || null;
 
     const {
       title,
@@ -77,12 +61,15 @@ exports.createHouse = async (req, res) => {
       house,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-    });
-  }
+  console.error("CREATE HOUSE ERROR:");
+  console.error(error);
+
+  res.status(500).json({
+    success: false,
+    message: error.message,
+    error,
+  });
+}
 };
 
 // Get All Houses (Server-side Pagination + Type Filter)
@@ -248,22 +235,30 @@ exports.updateHouse = async (req, res) => {
       );
 
       if (oldImage) {
-        await prisma.houseImage.update({
-          where: { id: oldImage.id },
-          data: { image: newFile.filename },
-        });
+  const publicId = oldImage.image
+    .split("/")
+    .slice(-2)
+    .join("/")
+    .replace(/\.[^/.]+$/, "");
 
-        removeImageFile(type, oldImage.image);
-      } else {
-        await prisma.houseImage.create({
-          data: {
-            houseId: id,
-            type,
-            image: newFile.filename,
-            sortOrder: type === "3d" ? 1 : 2,
-          },
-        });
-      }
+  await cloudinary.uploader.destroy(publicId);
+
+  await prisma.houseImage.update({
+    where: { id: oldImage.id },
+    data: {
+      image: newFile.path,
+    },
+  });
+} else {
+  await prisma.houseImage.create({
+    data: {
+      houseId: id,
+      type,
+      image: newFile.path,
+      sortOrder: type === "3d" ? 1 : 2,
+    },
+  });
+}
     }
 
     const updatedHouse = await prisma.house.findUnique({
@@ -306,15 +301,28 @@ exports.deleteHouse = async (req, res) => {
       });
     }
 
+    for (const img of house.images) {
+  if (!img.image) continue;
+
+  const publicId = img.image
+    .split("/")
+    .slice(-2)
+    .join("/")
+    .replace(/\.[^/.]+$/, "");
+
+  try {
+    await cloudinary.uploader.destroy(publicId);
+  } catch (e) {
+    console.log(e);
+  }
+}
+
     // Delete database record (related records cascade)
     await prisma.house.delete({
       where: { id },
     });
 
-    // Delete physical image files
-    house.images.forEach((img) => {
-      removeImageFile(img.type, img.image);
-    });
+  
 
     res.json({
       success: true,
