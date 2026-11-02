@@ -147,9 +147,30 @@ exports.getHouse = async (req, res) => {
 
     const house = await prisma.house.findUnique({
       where: { id },
-      include: {
-        images: true,
-        keywords: true,
+
+      select: {
+        id: true,
+        title: true,
+        houseType: true,
+        folder: true,
+        length: true,
+        width: true,
+        foundation: true,
+        complete: true,
+
+        images: {
+          select: {
+            type: true,
+            image: true,
+          },
+        },
+
+        keywords: {
+          select: {
+            language: true,
+            keyword: true,
+          },
+        },
       },
     });
 
@@ -160,12 +181,15 @@ exports.getHouse = async (req, res) => {
       });
     }
 
+    res.set("Cache-Control", "public, max-age=300");
+
     res.json({
       success: true,
       house,
     });
   } catch (error) {
     console.error(error);
+
     res.status(500).json({
       success: false,
       message: "Server Error",
@@ -290,9 +314,11 @@ exports.deleteHouse = async (req, res) => {
     const id = Number(req.params.id);
 
     const house = await prisma.house.findUnique({
-      where: { id },
-      include: { images: true },
-    });
+  where: { id },
+  include: {
+    images: true,
+  },
+});
 
     if (!house) {
       return res.status(404).json({
@@ -350,10 +376,23 @@ exports.searchHouses = async (req, res) => {
     }
 
     const houses = await prisma.house.findMany({
-      include: {
-        images: true,
+  select: {
+    id: true,
+    title: true,
+    houseType: true,
+    folder: true,
+    length: true,
+    width: true,
+    foundation: true,
+    complete: true,
+    images: {
+      select: {
+        type: true,
+        image: true,
       },
-    });
+    },
+  },
+});
 
     const scored = houses
       .map((house) => {

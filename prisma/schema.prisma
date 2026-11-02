@@ -38,6 +38,18 @@ model House {
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([houseType])
+  @@index([folder])
+  @@index([foundation])
+  @@index([complete])
+  @@index([status])
+  @@index([isFeatured])
+  @@index([createdAt])
+  @@index([houseType, complete])
+  @@index([houseType, foundation])
+  @@index([houseType, status])
+  @@index([houseType, createdAt])
 }
 
 model HouseImage {
@@ -51,6 +63,10 @@ model HouseImage {
   sortOrder  Int      @default(1)
 
   createdAt  DateTime @default(now())
+
+  @@index([houseId])
+  @@index([type])
+  @@index([houseId, type])
 }
 
 model HouseKeyword {
@@ -63,6 +79,11 @@ model HouseKeyword {
   keyword    String
 
   createdAt  DateTime @default(now())
+
+  @@index([houseId])
+  @@index([language])
+  @@index([keyword])
+  @@index([houseId, language])
 }
 
 model Admin {

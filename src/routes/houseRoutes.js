@@ -1,5 +1,3 @@
-
-
 const express = require("express");
 const router = express.Router();
 
@@ -14,7 +12,24 @@ const {
   searchHouses,
 } = require("../controllers/houseController");
 
+// ==============================
+// Search (must stay before /:id)
+// ==============================
+router.get("/search", searchHouses);
+
+// ==============================
+// Get All Houses
+// ==============================
+router.get("/", getAllHouses);
+
+// ==============================
+// Get Single House
+// ==============================
+router.get("/:id", getHouse);
+
+// ==============================
 // Create House
+// ==============================
 router.post(
   "/",
   upload.fields([
@@ -24,17 +39,9 @@ router.post(
   createHouse
 );
 
-// Smart Search
-router.get("/search", searchHouses);
-
-
-// Get All Houses
-router.get("/", getAllHouses);
-
-// Get Single House
-router.get("/:id", getHouse);
-
-// Update House with optional new images
+// ==============================
+// Update House
+// ==============================
 router.put(
   "/:id",
   upload.fields([
@@ -44,7 +51,9 @@ router.put(
   updateHouse
 );
 
+// ==============================
 // Delete House
+// ==============================
 router.delete("/:id", deleteHouse);
 
 module.exports = router;
