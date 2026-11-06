@@ -1,0 +1,136 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model House {
+  id            Int      @id @default(autoincrement())
+
+  // Existing house information
+  houseType     String
+  title         String
+  folder        String
+
+  length        Float
+  width         Float
+  lengthInches  Int      @default(0)
+  widthInches   Int      @default(0)
+  area          Float?
+
+  foundation    Int
+  complete      Int
+
+  // SEO information
+  designStyle   String?
+  language      String   @default("bn")
+
+  // Room information
+  bedroom       Int      @default(0)
+  bathroom      Int      @default(0)
+  balcony       Int      @default(0)
+  kitchen       Int      @default(0)
+  livingRoom    Int      @default(0)
+  diningRoom    Int      @default(0)
+  stair         Int      @default(0)
+
+  // House features
+  garage        Boolean  @default(false)
+  terrace       Boolean  @default(false)
+  frontGarden   Boolean  @default(false)
+  backGarden    Boolean  @default(false)
+  swimmingPool  Boolean  @default(false)
+  lift          Boolean  @default(false)
+  servantRoom   Boolean  @default(false)
+
+  // Existing image URLs
+  image3d       String?
+  image2d       String?
+
+  // Existing status and statistics
+  status        String   @default("Published")
+  isFeatured    Boolean  @default(false)
+
+  views         Int      @default(0)
+  likes         Int      @default(0)
+  comments      Int      @default(0)
+  shares        Int      @default(0)
+  saves         Int      @default(0)
+  downloads     Int      @default(0)
+  trendingScore Float    @default(0)
+
+  // Relations
+  images        HouseImage[]
+  keywords      HouseKeyword[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([houseType])
+  @@index([folder])
+  @@index([foundation])
+  @@index([complete])
+  @@index([status])
+  @@index([isFeatured])
+  @@index([createdAt])
+  @@index([designStyle])
+  @@index([language])
+  @@index([houseType, complete])
+  @@index([houseType, foundation])
+  @@index([houseType, status])
+  @@index([houseType, createdAt])
+}
+
+model HouseImage {
+  id          Int      @id @default(autoincrement())
+
+  houseId     Int
+  house       House    @relation(fields: [houseId], references: [id], onDelete: Cascade)
+
+  type        String
+  image       String
+  sortOrder   Int      @default(1)
+
+  // Image SEO information
+  imageTitle  String?
+  altText     String?
+  caption     String?
+  description String?
+  fileName    String?
+  keywords    String[] @default([])
+
+  createdAt   DateTime @default(now())
+
+  @@index([houseId])
+  @@index([type])
+  @@index([houseId, type])
+}
+
+model HouseKeyword {
+  id         Int      @id @default(autoincrement())
+
+  houseId    Int
+  house      House    @relation(fields: [houseId], references: [id], onDelete: Cascade)
+
+  language   String
+  keyword    String
+
+  createdAt  DateTime @default(now())
+
+  @@index([houseId])
+  @@index([language])
+  @@index([keyword])
+  @@index([houseId, language])
+}
+
+model Admin {
+  id        Int      @id @default(autoincrement())
+
+  username  String   @unique
+  password  String
+
+  createdAt DateTime @default(now())
+}

@@ -1,67 +1,44 @@
-const prisma = require("../prisma");
-const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-const login = async (req, res) => {
+exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    if (!username || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Username and Password are required.",
-      });
-    }
+    // Change these if you want
+    const ADMIN_USERNAME = "admin";
+    const ADMIN_PASSWORD = "admin123";
 
-    const admin = await prisma.admin.findUnique({
-      where: { username },
-    });
-
-    if (!admin) {
+    if (
+      username !== ADMIN_USERNAME ||
+      password !== ADMIN_PASSWORD
+    ) {
       return res.status(401).json({
         success: false,
-        message: "Invalid Username or Password.",
-      });
-    }
-
-    const match = await bcrypt.compare(password, admin.password);
-
-    if (!match) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid Username or Password.",
+        message: "Invalid Username or Password",
       });
     }
 
     const token = jwt.sign(
       {
-        id: admin.id,
-        username: admin.username,
+        username: ADMIN_USERNAME,
       },
       process.env.JWT_SECRET,
       {
-        expiresIn: "7d",
+        expiresIn: "30d",
       }
     );
 
-    res.json({
+    return res.status(200).json({
       success: true,
+      message: "Login Successful",
       token,
-      admin: {
-        id: admin.id,
-        username: admin.username,
-      },
     });
-  } catch (err) {
-    console.log(err);
+  } catch (error) {
+    console.error("ADMIN LOGIN ERROR:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Server Error",
     });
   }
-};
-
-module.exports = {
-  login,
 };
