@@ -332,52 +332,50 @@ exports.getAllHouses = async (req, res) => {
       where.houseType = req.query.type;
     }
 
-    const [total, houses] = await prisma.$transaction([
-      prisma.house.count({
-        where,
-      }),
+    const total = await prisma.house.count({
+  where,
+});
 
-      prisma.house.findMany({
-        where,
-        skip,
-        take: limit,
+const houses = await prisma.house.findMany({
+  where,
+  skip,
+  take: limit,
 
-        orderBy: {
-          id: "desc",
-        },
+  orderBy: {
+    id: "desc",
+  },
 
-        select: {
-          id: true,
-          title: true,
-          houseType: true,
-          folder: true,
-          length: true,
-          width: true,
-          foundation: true,
-          complete: true,
+  select: {
+    id: true,
+    title: true,
+    houseType: true,
+    folder: true,
+    length: true,
+    width: true,
+    foundation: true,
+    complete: true,
 
-          images: {
-            orderBy: {
-              sortOrder: "asc",
-            },
+    images: {
+      orderBy: {
+        sortOrder: "asc",
+      },
 
-            select: {
-              id: true,
-              type: true,
-              image: true,
-              sortOrder: true,
+      select: {
+        id: true,
+        type: true,
+        image: true,
+        sortOrder: true,
 
-              imageTitle: true,
-              altText: true,
-              caption: true,
-              description: true,
-              fileName: true,
-              keywords: true,
-            },
-          },
-        },
-      }),
-    ]);
+        imageTitle: true,
+        altText: true,
+        caption: true,
+        description: true,
+        fileName: true,
+        keywords: true,
+      },
+    },
+  },
+});
 
     res.setHeader("Cache-Control", "public, max-age=300");
 
