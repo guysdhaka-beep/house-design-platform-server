@@ -318,7 +318,6 @@ console.log(req.body);
 // GET ALL HOUSES
 // ==========================================
 
-
 exports.getAllHouses = async (req, res) => {
   console.log("GET ALL HOUSES RUNNING");
 
@@ -338,49 +337,51 @@ exports.getAllHouses = async (req, res) => {
       where.houseType = type;
     }
 
-    const [total, houses] = await prisma.$transaction([
-      prisma.house.count({ where }),
+    // Total Houses
+    const total = await prisma.house.count({
+      where,
+    });
 
-      prisma.house.findMany({
-        where,
-        skip,
-        take: limit,
+    // House List
+    const houses = await prisma.house.findMany({
+      where,
+      skip,
+      take: limit,
 
-        select: {
-          id: true,
-          title: true,
-          houseType: true,
-          folder: true,
-          length: true,
-          width: true,
-          foundation: true,
-          complete: true,
+      select: {
+        id: true,
+        title: true,
+        houseType: true,
+        folder: true,
+        length: true,
+        width: true,
+        foundation: true,
+        complete: true,
 
-          images: {
-  select: {
-    id: true,
-    type: true,
-    image: true,
-    sortOrder: true,
+        images: {
+          select: {
+            id: true,
+            type: true,
+            image: true,
+            sortOrder: true,
 
-    imageTitle: true,
-    altText: true,
-    caption: true,
-    description: true,
-    fileName: true,
-    keywords: true,
-  },
-  orderBy: {
-    sortOrder: "asc",
-  },
-},
+            imageTitle: true,
+            altText: true,
+            caption: true,
+            description: true,
+            fileName: true,
+            keywords: true,
+          },
+          orderBy: {
+            sortOrder: "asc",
+          },
         },
+      },
 
-        orderBy: {
-          id: "desc",
-        },
-      }),
-    ]);
+      orderBy: {
+        id: "desc",
+      },
+    });
 
     res.set("Cache-Control", "public, max-age=300");
 
