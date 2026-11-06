@@ -6,7 +6,6 @@ const path = require("path");
 const compression = require("compression");
 const prisma = require("./prisma");
 
-
 const app = express();
 
 app.set("etag", "strong");
@@ -28,8 +27,13 @@ app.use(
 // --------------------------------------
 app.use(
   cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin: [
+      "http://localhost:5173",
+      "https://housedgn.com",
+      "https://www.housedgn.com",
+    ],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   })
 );
 

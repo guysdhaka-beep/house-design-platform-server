@@ -322,70 +322,66 @@ exports.getAllHouses = async (req, res) => {
   console.log("GET ALL HOUSES RUNNING");
 
   try {
-    const page = Math.max(1, parseNumber(req.query.page, 1));
-    const limit = Math.min(
-      100,
-      Math.max(1, parseNumber(req.query.limit, 15))
-    );
-
-    const type = req.query.type;
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 15;
     const skip = (page - 1) * limit;
 
     const where = {};
 
-    if (type) {
-      where.houseType = type;
+    if (req.query.type) {
+      where.houseType = req.query.type;
     }
 
-    // Total Houses
-    const total = await prisma.house.count({
-      where,
-    });
+    const [total, houses] = await prisma.$transaction([
+      prisma.house.count({
+        where,
+      }),
 
-    // House List
-    const houses = await prisma.house.findMany({
-      where,
-      skip,
-      take: limit,
+      prisma.house.findMany({
+        where,
+        skip,
+        take: limit,
 
-      select: {
-        id: true,
-        title: true,
-        houseType: true,
-        folder: true,
-        length: true,
-        width: true,
-        foundation: true,
-        complete: true,
+        orderBy: {
+          id: "desc",
+        },
 
-        images: {
-          select: {
-            id: true,
-            type: true,
-            image: true,
-            sortOrder: true,
+        select: {
+          id: true,
+          title: true,
+          houseType: true,
+          folder: true,
+          length: true,
+          width: true,
+          foundation: true,
+          complete: true,
 
-            imageTitle: true,
-            altText: true,
-            caption: true,
-            description: true,
-            fileName: true,
-            keywords: true,
-          },
-          orderBy: {
-            sortOrder: "asc",
+          images: {
+            orderBy: {
+              sortOrder: "asc",
+            },
+
+            select: {
+              id: true,
+              type: true,
+              image: true,
+              sortOrder: true,
+
+              imageTitle: true,
+              altText: true,
+              caption: true,
+              description: true,
+              fileName: true,
+              keywords: true,
+            },
           },
         },
-      },
+      }),
+    ]);
 
-      orderBy: {
-        id: "desc",
-      },
-    });
+    res.setHeader("Cache-Control", "public, max-age=300");
 
-    res.set("Cache-Control", "public, max-age=300");
-
-    return res.json({
+    return res.status(200).json({
       success: true,
       page,
       limit,
@@ -393,12 +389,17 @@ exports.getAllHouses = async (req, res) => {
       totalPages: Math.ceil(total / limit),
       houses,
     });
-  } catch (error) {
-    console.error("GET ALL HOUSES ERROR:", error);
+  } catch (err) {
+    console.error("GET ALL HOUSES ERROR");
+    console.error(err);
 
     return res.status(500).json({
       success: false,
-      message: "Server Error",
+      message: err.message,
+      stack:
+        process.env.NODE_ENV === "development"
+          ? err.stack
+          : undefined,
     });
   }
 };
