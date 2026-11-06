@@ -497,75 +497,75 @@ exports.updateHouse = async (req, res) => {
     const imageUpdates = [];
 
     for (const type of ["3d", "2d"]) {
-      const fieldName = `image${type}`;
-      const newFile = req.files?.[fieldName]?.[0];
+  const fieldName = `image${type}`;
+  const newFile = req.files?.[fieldName]?.[0];
 
-      const metadata = getImageMetadata(req.body, type);
+  const oldImage = existingHouse.images.find(
+    (img) => img.type === type
+  );
 
-      if (oldImage && !newFile) {
-  metadata.imageTitle ??= oldImage.imageTitle;
-  metadata.altText ??= oldImage.altText;
-  metadata.caption ??= oldImage.caption;
-  metadata.description ??= oldImage.description;
-  metadata.fileName ??= oldImage.fileName;
-  metadata.keywords =
-    metadata.keywords.length > 0
-      ? metadata.keywords
-      : oldImage.keywords;
-}
+  const metadata = getImageMetadata(req.body, type);
 
-      const oldImage = existingHouse.images.find(
-        (img) => img.type === type
+  if (oldImage && !newFile) {
+    metadata.imageTitle ??= oldImage.imageTitle;
+    metadata.altText ??= oldImage.altText;
+    metadata.caption ??= oldImage.caption;
+    metadata.description ??= oldImage.description;
+    metadata.fileName ??= oldImage.fileName;
+    metadata.keywords =
+      metadata.keywords.length > 0
+        ? metadata.keywords
+        : oldImage.keywords;
+  }
+
+  if (newFile) {
+    imageUpdates.push({
+      type,
+      oldImage,
+      newFile,
+      metadata,
+    });
+
+    updateData[fieldName] = newFile.path;
+  } else if (oldImage) {
+    const metadataKeys = [
+      "imageTitle",
+      "altText",
+      "caption",
+      "description",
+      "fileName",
+      "keywords",
+    ];
+
+    const metadataData = {};
+
+    for (const key of metadataKeys) {
+      const bodyKey = {
+        imageTitle: [`${fieldName}Title`, `${fieldName}ImageTitle`],
+        altText: [`${fieldName}Alt`, `${fieldName}AltText`],
+        caption: [`${fieldName}Caption`],
+        description: [`${fieldName}Description`],
+        fileName: [`${fieldName}FileName`, `${fieldName}Filename`],
+        keywords: [`${fieldName}Keywords`],
+      }[key];
+
+      const provided = bodyKey.some(
+        (name) => req.body[name] !== undefined
       );
 
-      if (newFile) {
-        imageUpdates.push({
-          type,
-          oldImage,
-          newFile,
-          metadata,
-        });
-
-        updateData[fieldName] = newFile.path;
-      } else if (oldImage) {
-        const metadataKeys = [
-          "imageTitle",
-          "altText",
-          "caption",
-          "description",
-          "fileName",
-          "keywords",
-        ];
-
-        const metadataData = {};
-
-        for (const key of metadataKeys) {
-          const bodyKey = {
-            imageTitle: [`${fieldName}Title`, `${fieldName}ImageTitle`],
-            altText: [`${fieldName}Alt`, `${fieldName}AltText`],
-            caption: [`${fieldName}Caption`],
-            description: [`${fieldName}Description`],
-            fileName: [`${fieldName}FileName`, `${fieldName}Filename`],
-            keywords: [`${fieldName}Keywords`],
-          }[key];
-
-          const provided = bodyKey.some(
-            (name) => req.body[name] !== undefined
-          );
-
-          if (provided) {
-            metadataData[key] = metadata[key];
-          }
-        }
-
-        if (Object.keys(metadataData).length) {
-          await prisma.houseImage.update({
-            where: { id: oldImage.id },
-            data: metadataData,
-          });
-        }
+      if (provided) {
+        metadataData[key] = metadata[key];
       }
     }
+
+    if (Object.keys(metadataData).length) {
+      await prisma.houseImage.update({
+        where: { id: oldImage.id },
+        data: metadataData,
+      });
+    }
+  }
+}
 
     // Update house data
     await prisma.house.update({
