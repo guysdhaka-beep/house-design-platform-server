@@ -314,7 +314,7 @@ console.log(req.body);
   }
 };
 
-// ==========================================
+/// ==========================================
 // GET ALL HOUSES
 // ==========================================
 
@@ -326,56 +326,84 @@ exports.getAllHouses = async (req, res) => {
     const limit = Number(req.query.limit) || 15;
     const skip = (page - 1) * limit;
 
+    // ===== DEBUG =====
+    const all = await prisma.house.findMany({
+      select: {
+        id: true,
+        title: true,
+        houseType: true,
+      },
+    });
+
+    console.log("================================");
+    console.log("TOTAL IN DATABASE =", all.length);
+    console.table(all);
+    console.log("================================");
+
     const where = {};
 
     if (req.query.type) {
-      where.houseType = req.query.type;
+      console.log("REQ TYPE =", req.query.type);
+
+      const typeMap = {
+        "1-story": "1-story",
+        "2-story": "2-story",
+        "3-story": "3-story",
+        "4-story": "4-story",
+        luxury: "Luxury",
+        tinshade: "Tin Shade",
+      };
+
+      where.houseType = typeMap[req.query.type] || req.query.type;
+
+      console.log("DB TYPE =", where.houseType);
     }
 
+    console.log("WHERE =", where);
+
     const total = await prisma.house.count({
-  where,
-});
+      where,
+    });
 
-const houses = await prisma.house.findMany({
-  where,
-  skip,
-  take: limit,
+    console.log("TOTAL AFTER FILTER =", total);
 
-  orderBy: {
-    id: "desc",
-  },
-
-  select: {
-    id: true,
-    title: true,
-    houseType: true,
-    folder: true,
-    length: true,
-    width: true,
-    foundation: true,
-    complete: true,
-
-    images: {
+    const houses = await prisma.house.findMany({
+      where,
+      skip,
+      take: limit,
       orderBy: {
-        sortOrder: "asc",
+        id: "desc",
       },
-
       select: {
         id: true,
-        type: true,
-        image: true,
-        sortOrder: true,
-
-        imageTitle: true,
-        altText: true,
-        caption: true,
-        description: true,
-        fileName: true,
-        keywords: true,
+        title: true,
+        houseType: true,
+        folder: true,
+        length: true,
+        width: true,
+        foundation: true,
+        complete: true,
+        images: {
+          orderBy: {
+            sortOrder: "asc",
+          },
+          select: {
+            id: true,
+            type: true,
+            image: true,
+            sortOrder: true,
+            imageTitle: true,
+            altText: true,
+            caption: true,
+            description: true,
+            fileName: true,
+            keywords: true,
+          },
+        },
       },
-    },
-  },
-});
+    });
+
+    console.log("RETURN HOUSES =", houses.length);
 
     res.setHeader("Cache-Control", "public, max-age=300");
 
@@ -387,6 +415,7 @@ const houses = await prisma.house.findMany({
       totalPages: Math.ceil(total / limit),
       houses,
     });
+
   } catch (err) {
     console.error("GET ALL HOUSES ERROR");
     console.error(err);
@@ -394,10 +423,9 @@ const houses = await prisma.house.findMany({
     return res.status(500).json({
       success: false,
       message: err.message,
-      stack:
-        process.env.NODE_ENV === "development"
-          ? err.stack
-          : undefined,
+      stack: process.env.NODE_ENV === "development"
+        ? err.stack
+        : undefined,
     });
   }
 };
@@ -466,8 +494,12 @@ exports.getHouse = async (req, res) => {
 // UPDATE HOUSE
 // ==========================================
 
+
+
 exports.updateHouse = async (req, res) => {
   try {
+console.log("House Type =", req.body.houseType);
+
     const id = Number(req.params.id);
 
     if (!Number.isInteger(id) || id <= 0) {
