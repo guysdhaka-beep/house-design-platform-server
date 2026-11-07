@@ -1,3 +1,4 @@
+
 require("dotenv").config();
 
 const express = require("express");
@@ -102,8 +103,6 @@ app.use("/api", (req, res, next) => {
 const adminRoutes = require("./routes/adminRoutes");
 const houseRoutes = require("./routes/houseRoutes");
 
-
-
 app.use("/api/admin", adminRoutes);
 app.use("/api/houses", houseRoutes);
 
@@ -113,22 +112,22 @@ app.use("/api/houses", houseRoutes);
 app.get("/sitemap.xml", async (req, res) => {
   try {
     const houses = await prisma.house.findMany({
-  select: {
-    id: true,
-    updatedAt: true,
-    houseType: true,
-    folder: true,
-    complete: true,
-    images: {
       select: {
-        image: true,
+        id: true,
+        updatedAt: true,
+        houseType: true,
+        folder: true,
+        complete: true,
+        images: {
+          select: {
+            image: true,
+          },
+        },
       },
-    },
-  },
-  orderBy: {
-    updatedAt: "desc",
-  },
-});
+      orderBy: {
+        updatedAt: "desc",
+      },
+    });
 
     let xml = `<?xml version="1.0" encoding="UTF-8"?>`;
     xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
@@ -142,43 +141,44 @@ app.get("/sitemap.xml", async (req, res) => {
       </url>
     `;
 
+    // House Categories
     xml += `
-  <url>
-    <loc>https://housedgn.com/houses/1-floor</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
+      <url>
+        <loc>https://housedgn.com/houses/1-story</loc>
+        <changefreq>weekly</changefreq>
+        <priority>0.9</priority>
+      </url>
 
-  <url>
-    <loc>https://housedgn.com/houses/2-floor</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
+      <url>
+        <loc>https://housedgn.com/houses/2-story</loc>
+        <changefreq>weekly</changefreq>
+        <priority>0.9</priority>
+      </url>
 
-  <url>
-    <loc>https://housedgn.com/houses/3-floor</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
+      <url>
+        <loc>https://housedgn.com/houses/3-story</loc>
+        <changefreq>weekly</changefreq>
+        <priority>0.9</priority>
+      </url>
 
-  <url>
-    <loc>https://housedgn.com/houses/4-floor</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
+      <url>
+        <loc>https://housedgn.com/houses/4-story</loc>
+        <changefreq>weekly</changefreq>
+        <priority>0.9</priority>
+      </url>
 
-  <url>
-    <loc>https://housedgn.com/houses/luxury</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
+      <url>
+        <loc>https://housedgn.com/houses/luxury</loc>
+        <changefreq>weekly</changefreq>
+        <priority>0.9</priority>
+      </url>
 
-  <url>
-    <loc>https://housedgn.com/houses/tinshade</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-`;
+      <url>
+        <loc>https://housedgn.com/houses/tinshade</loc>
+        <changefreq>weekly</changefreq>
+        <priority>0.9</priority>
+      </url>
+    `;
 
     // House Details
     houses.forEach((house) => {
@@ -227,7 +227,6 @@ app.get("/sitemap.xml", async (req, res) => {
 // Home
 // --------------------------------------
 app.get("/", (req, res) => {
-
   res.json({
     success: true,
     message: "House Design Platform API is Running 🚀",
