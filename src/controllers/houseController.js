@@ -250,8 +250,6 @@ exports.createHouse = async (req, res) => {
 
     if (image3d) {
 
-console.log(req.body);
-
       images.push({
         type: "3d",
         image: image3d.path,
@@ -335,15 +333,10 @@ exports.getAllHouses = async (req, res) => {
       },
     });
 
-    console.log("================================");
-    console.log("TOTAL IN DATABASE =", all.length);
-    console.table(all);
-    console.log("================================");
-
     const where = {};
 
     if (req.query.type) {
-      console.log("REQ TYPE =", req.query.type);
+      
 
       const typeMap = {
         "1-story": "1-story",
@@ -355,17 +348,13 @@ exports.getAllHouses = async (req, res) => {
       };
 
       where.houseType = typeMap[req.query.type] || req.query.type;
-
-      console.log("DB TYPE =", where.houseType);
     }
 
-    console.log("WHERE =", where);
+    
 
     const total = await prisma.house.count({
       where,
     });
-
-    console.log("TOTAL AFTER FILTER =", total);
 
     const houses = await prisma.house.findMany({
       where,
@@ -403,7 +392,6 @@ exports.getAllHouses = async (req, res) => {
       },
     });
 
-    console.log("RETURN HOUSES =", houses.length);
 
     res.setHeader("Cache-Control", "public, max-age=300");
 
@@ -417,7 +405,6 @@ exports.getAllHouses = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("GET ALL HOUSES ERROR");
     console.error(err);
 
     return res.status(500).json({
@@ -498,7 +485,7 @@ exports.getHouse = async (req, res) => {
 
 exports.updateHouse = async (req, res) => {
   try {
-console.log("House Type =", req.body.houseType);
+
 
     const id = Number(req.params.id);
 
