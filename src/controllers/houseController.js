@@ -324,14 +324,62 @@ exports.getAllHouses = async (req, res) => {
     const limit = Number(req.query.limit) || 15;
     const skip = (page - 1) * limit;
 
-    // ===== DEBUG =====
-    const all = await prisma.house.findMany({
-      select: {
-        id: true,
-        title: true,
-        houseType: true,
-      },
-    });
+    
+    // ==============================
+// Home Page Latest 6 Houses
+// ==============================
+
+if (req.query.home === "true") {
+  const typeMap = [
+    "1-story",
+    "2-story",
+    "3-story",
+    "4-story",
+    "Luxury",
+    "Tin Shade",
+  ];
+
+  const houses = await Promise.all(
+    typeMap.map((houseType) =>
+      prisma.house.findFirst({
+        where: {
+          houseType,
+        },
+        orderBy: {
+          id: "desc",
+        },
+        select: {
+          id: true,
+          title: true,
+          houseType: true,
+          folder: true,
+          length: true,
+          width: true,
+          foundation: true,
+          complete: true,
+          images: {
+            orderBy: {
+              sortOrder: "asc",
+            },
+            select: {
+              id: true,
+              type: true,
+              image: true,
+              sortOrder: true,
+            },
+          },
+        },
+      })
+    )
+  );
+
+  res.setHeader("Cache-Control", "public, max-age=300");
+
+  return res.json({
+    success: true,
+    houses: houses.filter(Boolean),
+  });
+}
 
     const where = {};
 
