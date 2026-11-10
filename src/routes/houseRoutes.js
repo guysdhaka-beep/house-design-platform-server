@@ -7,6 +7,7 @@ const {
   createHouse,
   getAllHouses,
   getHouse,
+  getRelatedHouses,
   updateHouse,
   deleteHouse,
   searchHouses,
@@ -16,6 +17,12 @@ const {
 // Search (must stay before /:id)
 // ==============================
 router.get("/search", searchHouses);
+
+// ==============================
+// Related Houses
+// Must stay before /:id
+// ==============================
+router.get("/related/:id", getRelatedHouses);
 
 // ==============================
 // Get All Houses

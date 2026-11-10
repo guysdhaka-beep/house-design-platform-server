@@ -466,6 +466,151 @@ if (req.query.home === "true") {
 };
 
 // ==========================================
+// GET RELATED HOUSES
+// Purpose:
+// House Details / Floor Plan / Estimate page-এর নিচে
+// মোট ১২টি Related House দেখানোর জন্য।
+//
+// 6 = Same House Type
+// 6 = Latest from Other Types
+// ==========================================
+
+exports.getRelatedHouses = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    const currentHouse = await prisma.house.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        houseType: true,
+      },
+    });
+
+    if (!currentHouse) {
+      return res.status(404).json({
+        success: false,
+        message: "House not found",
+      });
+    }
+
+    // ===========================
+    // Same Type (Latest 6)
+    // ===========================
+
+    const sameType = await prisma.house.findMany({
+      where: {
+        houseType: currentHouse.houseType,
+        id: {
+          not: id,
+        },
+      },
+      orderBy: {
+        id: "desc",
+      },
+      take: 6,
+      select: {
+        id: true,
+        title: true,
+        houseType: true,
+        folder: true,
+        length: true,
+        width: true,
+        foundation: true,
+        complete: true,
+        images: {
+          orderBy: {
+            sortOrder: "asc",
+          },
+          select: {
+            id: true,
+            type: true,
+            image: true,
+            sortOrder: true,
+          },
+        },
+      },
+    });
+
+    // ===========================
+    // One Latest House
+    // From Every Other Type
+    // ===========================
+
+    const allTypes = [
+      "1-story",
+      "2-story",
+      "3-story",
+      "4-story",
+      "Luxury",
+      "Tin Shade",
+    ];
+
+    const otherTypes = allTypes.filter(
+      (type) => type !== currentHouse.houseType
+    );
+
+    const latestOtherTypes = await Promise.all(
+      otherTypes.map((houseType) =>
+        prisma.house.findFirst({
+          where: {
+            houseType,
+          },
+          orderBy: {
+            id: "desc",
+          },
+          select: {
+            id: true,
+            title: true,
+            houseType: true,
+            folder: true,
+            length: true,
+            width: true,
+            foundation: true,
+            complete: true,
+            images: {
+              orderBy: {
+                sortOrder: "asc",
+              },
+              select: {
+                id: true,
+                type: true,
+                image: true,
+                sortOrder: true,
+              },
+            },
+          },
+        })
+      )
+    );
+
+    const houses = [
+      ...sameType,
+      ...latestOtherTypes.filter(Boolean),
+    ];
+
+    res.setHeader(
+      "Cache-Control",
+      "public, max-age=300"
+    );
+
+    return res.json({
+      success: true,
+      houses,
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+// ==========================================
 // GET SINGLE HOUSE
 // ==========================================
 
