@@ -31,6 +31,7 @@ const allowedOrigins = [
   "http://localhost:5173",
   "https://housedgn.com",
   "https://www.housedgn.com",
+  "https://house-design-platform-v2.vercel.app",
 ];
 
 app.use(
