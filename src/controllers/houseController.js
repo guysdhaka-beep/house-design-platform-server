@@ -1,6 +1,8 @@
-
 const prisma = require("../prisma");
 const cloudinary = require("../cloudinary");
+const { uploadVideoToR2, deleteVideoFromR2 } = require("../r2");
+
+const uploadImageToCloudinary = require("../uploadImageToCloudinary");
 
 // ==========================================
 // HELPER FUNCTIONS
@@ -10,7 +12,6 @@ const parseNumber = (value, fallback = undefined) => {
   if (value === undefined || value === null || value === "") {
     return fallback;
   }
-
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
 };
@@ -19,7 +20,6 @@ const parseBoolean = (value, fallback = false) => {
   if (value === undefined || value === null || value === "") {
     return fallback;
   }
-
   return value === true || value === "true" || value === "1";
 };
 
@@ -27,9 +27,7 @@ const parseJson = (value, fallback = null) => {
   if (value === undefined || value === null || value === "") {
     return fallback;
   }
-
   if (typeof value !== "string") return value;
-
   try {
     return JSON.parse(value);
   } catch {
@@ -39,27 +37,21 @@ const parseJson = (value, fallback = null) => {
 
 const parseKeywords = (value) => {
   const parsed = parseJson(value, value);
-
   if (Array.isArray(parsed)) {
     return parsed.map(String).filter(Boolean);
   }
-
   if (typeof parsed === "string" && parsed.trim()) {
     return [parsed.trim()];
   }
-
   return [];
 };
 
 const getCloudinaryPublicId = (imageUrl) => {
   if (!imageUrl) return null;
-
   try {
     const url = new URL(imageUrl);
     const uploadIndex = url.pathname.indexOf("/upload/");
-
     if (uploadIndex === -1) return null;
-
     let publicPath = url.pathname
       .slice(uploadIndex + 8)
       .replace(/^\/+/, "");
@@ -76,29 +68,23 @@ const getCloudinaryPublicId = (imageUrl) => {
 
 const getImageMetadata = (body, type) => {
   const prefix = `image${type}`;
-
   return {
     imageTitle:
       body[`${prefix}Title`] ||
       body[`${prefix}ImageTitle`] ||
       null,
-
     altText:
       body[`${prefix}Alt`] ||
       body[`${prefix}AltText`] ||
       null,
-
     caption:
       body[`${prefix}Caption`] || null,
-
     description:
       body[`${prefix}Description`] || null,
-
     fileName:
       body[`${prefix}FileName`] ||
       body[`${prefix}Filename`] ||
       null,
-
     keywords: parseKeywords(body[`${prefix}Keywords`]),
   };
 };
@@ -151,7 +137,6 @@ const getHouseData = (body, existing = null) => {
   for (const field of numberFields) {
     if (body[field] !== undefined && body[field] !== "") {
       const number = parseNumber(body[field]);
-
       if (number !== undefined) {
         data[field] = number;
       }
@@ -190,7 +175,6 @@ const getHouseData = (body, existing = null) => {
     for (const field of roomFields) {
       if (rooms[field] !== undefined) {
         const number = parseNumber(rooms[field]);
-
         if (number !== undefined) {
           data[field] = number;
         }
@@ -236,6 +220,7 @@ exports.createHouse = async (req, res) => {
   try {
     const image3d = req.files?.image3d?.[0] || null;
     const image2d = req.files?.image2d?.[0] || null;
+    const video = req.files?.video?.[0] || null;
 
     const data = getHouseData(req.body);
 
@@ -249,27 +234,30 @@ exports.createHouse = async (req, res) => {
     const images = [];
 
     if (image3d) {
+  const image3dUrl = await uploadImageToCloudinary(image3d.path);
 
-      images.push({
-        type: "3d",
-        image: image3d.path,
-        sortOrder: 1,
-        ...getImageMetadata(req.body, "3d"),
-      });
+  images.push({
+    type: "3d",
+    image: image3dUrl,
+    sortOrder: 1,
+    ...getImageMetadata(req.body, "3d"),
+  });
 
-      data.image3d = image3d.path;
-    }
+  data.image3d = image3dUrl;
+}
 
-    if (image2d) {
-      images.push({
-        type: "2d",
-        image: image2d.path,
-        sortOrder: 2,
-        ...getImageMetadata(req.body, "2d"),
-      });
+if (image2d) {
+  const image2dUrl = await uploadImageToCloudinary(image2d.path);
 
-      data.image2d = image2d.path;
-    }
+  images.push({
+    type: "2d",
+    image: image2dUrl,
+    sortOrder: 2,
+    ...getImageMetadata(req.body, "2d"),
+  });
+
+  data.image2d = image2dUrl;
+}
 
     const keywords = parseKeywords(req.body.keywords);
 
@@ -286,6 +274,11 @@ exports.createHouse = async (req, res) => {
           keyword,
         })),
       };
+    }
+
+    // Upload Video to Cloudflare R2
+    if (video) {
+      data.videoUrl = await uploadVideoToR2(video);
     }
 
     const house = await prisma.house.create({
@@ -312,7 +305,7 @@ exports.createHouse = async (req, res) => {
   }
 };
 
-/// ==========================================
+// ==========================================
 // GET ALL HOUSES
 // ==========================================
 
@@ -324,68 +317,65 @@ exports.getAllHouses = async (req, res) => {
     const limit = Number(req.query.limit) || 15;
     const skip = (page - 1) * limit;
 
-    
     // ==============================
-// Home Page Latest 6 Houses
-// ==============================
+    // Home Page Latest 6 Houses
+    // ==============================
 
-if (req.query.home === "true") {
-  const typeMap = [
-    "1-story",
-    "2-story",
-    "3-story",
-    "4-story",
-    "Luxury",
-    "Tin Shade",
-  ];
+    if (req.query.home === "true") {
+      const typeMap = [
+        "1-story",
+        "2-story",
+        "3-story",
+        "4-story",
+        "Luxury",
+        "Tin Shade",
+      ];
 
-  const houses = await Promise.all(
-    typeMap.map((houseType) =>
-      prisma.house.findFirst({
-        where: {
-          houseType,
-        },
-        orderBy: {
-          id: "desc",
-        },
-        select: {
-          id: true,
-          title: true,
-          houseType: true,
-          folder: true,
-          length: true,
-          width: true,
-          foundation: true,
-          complete: true,
-          images: {
+      const houses = await Promise.all(
+        typeMap.map((houseType) =>
+          prisma.house.findFirst({
+            where: {
+              houseType,
+            },
             orderBy: {
-              sortOrder: "asc",
+              id: "desc",
             },
             select: {
               id: true,
-              type: true,
-              image: true,
-              sortOrder: true,
+              title: true,
+              houseType: true,
+              folder: true,
+              length: true,
+              width: true,
+              foundation: true,
+              complete: true,
+              images: {
+                orderBy: {
+                  sortOrder: "asc",
+                },
+                select: {
+                  id: true,
+                  type: true,
+                  image: true,
+                  sortOrder: true,
+                },
+              },
             },
-          },
-        },
-      })
-    )
-  );
+          })
+        )
+      );
 
-  res.setHeader("Cache-Control", "public, max-age=300");
+      res.setHeader("Cache-Control", "public, max-age=300");
 
-  return res.json({
-    success: true,
-    houses: houses.filter(Boolean),
-  });
-}
+      return res.json({
+        success: true,
+        houses: houses.filter(Boolean),
+      });
+    }
 
     const where = {};
 
     if (req.query.type) {
-      
-
       const typeMap = {
         "1-story": "1-story",
         "2-story": "2-story",
@@ -397,8 +387,6 @@ if (req.query.home === "true") {
 
       where.houseType = typeMap[req.query.type] || req.query.type;
     }
-
-    
 
     const total = await prisma.house.count({
       where,
@@ -440,7 +428,6 @@ if (req.query.home === "true") {
       },
     });
 
-
     res.setHeader("Cache-Control", "public, max-age=300");
 
     return res.status(200).json({
@@ -469,7 +456,7 @@ if (req.query.home === "true") {
 // GET RELATED HOUSES
 // Purpose:
 // House Details / Floor Plan / Estimate page-এর নিচে
-// মোট ১২টি Related House দেখানোর জন্য।
+// মোট ১২টি Related House দেখানোর জন্য.
 //
 // 6 = Same House Type
 // 6 = Latest from Other Types
@@ -609,7 +596,6 @@ exports.getRelatedHouses = async (req, res) => {
   }
 };
 
-
 // ==========================================
 // GET SINGLE HOUSE
 // ==========================================
@@ -627,14 +613,12 @@ exports.getHouse = async (req, res) => {
 
     const house = await prisma.house.findUnique({
       where: { id },
-
       include: {
         images: {
           orderBy: {
             sortOrder: "asc",
           },
         },
-
         keywords: {
           select: {
             language: true,
@@ -660,6 +644,7 @@ exports.getHouse = async (req, res) => {
       success: true,
       house,
     });
+
   } catch (error) {
     console.error("GET HOUSE ERROR:", error);
 
@@ -673,13 +658,10 @@ exports.getHouse = async (req, res) => {
 // ==========================================
 // UPDATE HOUSE
 // ==========================================
-
-
-
 exports.updateHouse = async (req, res) => {
+  console.log("UPDATE API HIT");
+
   try {
-
-
     const id = Number(req.params.id);
 
     if (!Number.isInteger(id) || id <= 0) {
@@ -705,78 +687,94 @@ exports.updateHouse = async (req, res) => {
     }
 
     const updateData = getHouseData(req.body, existingHouse);
+    const newVideo = req.files?.video?.[0] || null;
 
     const imageUpdates = [];
 
     for (const type of ["3d", "2d"]) {
-  const fieldName = `image${type}`;
-  const newFile = req.files?.[fieldName]?.[0];
+      const fieldName = `image${type}`;
+      const newFile = req.files?.[fieldName]?.[0];
 
-  const oldImage = existingHouse.images.find(
-    (img) => img.type === type
-  );
-
-  const metadata = getImageMetadata(req.body, type);
-
-  if (oldImage && !newFile) {
-    metadata.imageTitle ??= oldImage.imageTitle;
-    metadata.altText ??= oldImage.altText;
-    metadata.caption ??= oldImage.caption;
-    metadata.description ??= oldImage.description;
-    metadata.fileName ??= oldImage.fileName;
-    metadata.keywords =
-      metadata.keywords.length > 0
-        ? metadata.keywords
-        : oldImage.keywords;
-  }
-
-  if (newFile) {
-    imageUpdates.push({
-      type,
-      oldImage,
-      newFile,
-      metadata,
-    });
-
-    updateData[fieldName] = newFile.path;
-  } else if (oldImage) {
-    const metadataKeys = [
-      "imageTitle",
-      "altText",
-      "caption",
-      "description",
-      "fileName",
-      "keywords",
-    ];
-
-    const metadataData = {};
-
-    for (const key of metadataKeys) {
-      const bodyKey = {
-        imageTitle: [`${fieldName}Title`, `${fieldName}ImageTitle`],
-        altText: [`${fieldName}Alt`, `${fieldName}AltText`],
-        caption: [`${fieldName}Caption`],
-        description: [`${fieldName}Description`],
-        fileName: [`${fieldName}FileName`, `${fieldName}Filename`],
-        keywords: [`${fieldName}Keywords`],
-      }[key];
-
-      const provided = bodyKey.some(
-        (name) => req.body[name] !== undefined
+      const oldImage = existingHouse.images.find(
+        (img) => img.type === type
       );
 
-      if (provided) {
-        metadataData[key] = metadata[key];
+      const metadata = getImageMetadata(req.body, type);
+
+      if (oldImage && !newFile) {
+        metadata.imageTitle ??= oldImage.imageTitle;
+        metadata.altText ??= oldImage.altText;
+        metadata.caption ??= oldImage.caption;
+        metadata.description ??= oldImage.description;
+        metadata.fileName ??= oldImage.fileName;
+
+        metadata.keywords =
+          metadata.keywords.length > 0
+            ? metadata.keywords
+            : oldImage.keywords;
+      }
+
+      if (newFile) {
+  const imageUrl = await uploadImageToCloudinary(newFile);
+
+  imageUpdates.push({
+    type,
+    oldImage,
+    imageUrl,
+    metadata,
+  });
+
+  updateData[fieldName] = imageUrl;
+
+} else if (oldImage) {
+        const metadataKeys = [
+          "imageTitle",
+          "altText",
+          "caption",
+          "description",
+          "fileName",
+          "keywords",
+        ];
+
+        const metadataData = {};
+
+        for (const key of metadataKeys) {
+          const bodyKey = {
+            imageTitle: [`${fieldName}Title`, `${fieldName}ImageTitle`],
+            altText: [`${fieldName}Alt`, `${fieldName}AltText`],
+            caption: [`${fieldName}Caption`],
+            description: [`${fieldName}Description`],
+            fileName: [`${fieldName}FileName`, `${fieldName}Filename`],
+            keywords: [`${fieldName}Keywords`],
+          }[key];
+
+          const provided = bodyKey.some(
+            (name) => req.body[name] !== undefined
+          );
+
+          if (provided) {
+            metadataData[key] = metadata[key];
+          }
+        }
+
+        if (Object.keys(metadataData).length) {
+          await prisma.houseImage.update({
+            where: { id: oldImage.id },
+            data: metadataData,
+          });
+        }
       }
     }
 
-    if (Object.keys(metadataData).length) {
-      await prisma.houseImage.update({
-        where: { id: oldImage.id },
-        data: metadataData,
-      });
-    }
-  }
+    // Upload the replacement video to R2 before saving its URL.
+console.log("FILES:", req.files);
+
+if (newVideo) {
+  console.log("VIDEO FOUND:", newVideo.originalname);
+
+  updateData.videoUrl = await uploadVideoToR2(newVideo);
+
+  console.log("UPLOAD SUCCESS:", updateData.videoUrl);
 }
 
     // Update house data
@@ -785,9 +783,18 @@ exports.updateHouse = async (req, res) => {
       data: updateData,
     });
 
+    // Remove the previous R2 object only after the new URL is saved.
+    if (newVideo && existingHouse.videoUrl) {
+      try {
+        await deleteVideoFromR2(existingHouse.videoUrl);
+      } catch (error) {
+        console.error("OLD VIDEO DELETE ERROR:", error);
+      }
+    }
+
     // Replace uploaded images
     for (const item of imageUpdates) {
-      const { type, oldImage, newFile, metadata } = item;
+      const { type, oldImage, imageUrl, metadata } = item;
 
       if (oldImage) {
         const publicId = getCloudinaryPublicId(oldImage.image);
@@ -801,22 +808,23 @@ exports.updateHouse = async (req, res) => {
         }
 
         await prisma.houseImage.update({
-          where: { id: oldImage.id },
-          data: {
-            image: newFile.path,
-            ...metadata,
-          },
-        });
+  where: { id: oldImage.id },
+  data: {
+    image: imageUrl,
+    ...metadata,
+  },
+});
+
       } else {
         await prisma.houseImage.create({
-          data: {
-            houseId: id,
-            type,
-            image: newFile.path,
-            sortOrder: type === "3d" ? 1 : 2,
-            ...metadata,
-          },
-        });
+  data: {
+    houseId: id,
+    type,
+    image: imageUrl,
+    sortOrder: type === "3d" ? 1 : 2,
+    ...metadata,
+  },
+});
       }
     }
 
@@ -863,6 +871,7 @@ exports.updateHouse = async (req, res) => {
       message: "House Updated Successfully",
       house,
     });
+
   } catch (error) {
     console.error("UPDATE HOUSE ERROR:", error);
 
@@ -903,6 +912,15 @@ exports.deleteHouse = async (req, res) => {
       });
     }
 
+    // Delete House video from Cloudflare R2.
+    if (house.videoUrl) {
+      try {
+        await deleteVideoFromR2(house.videoUrl);
+      } catch (error) {
+        console.error("R2 VIDEO DELETE ERROR:", error);
+      }
+    }
+
     // Delete Cloudinary images
     for (const img of house.images) {
       const publicId = getCloudinaryPublicId(img.image);
@@ -926,6 +944,7 @@ exports.deleteHouse = async (req, res) => {
       success: true,
       message: "House Deleted Successfully",
     });
+
   } catch (error) {
     console.error("DELETE HOUSE ERROR:", error);
 
@@ -963,14 +982,12 @@ exports.searchHouses = async (req, res) => {
         width: true,
         foundation: true,
         complete: true,
-
         images: {
           select: {
             type: true,
             image: true,
           },
         },
-
         keywords: {
           select: {
             keyword: true,
@@ -1050,6 +1067,7 @@ exports.searchHouses = async (req, res) => {
       success: true,
       houses: scored,
     });
+
   } catch (error) {
     console.error("SEARCH HOUSES ERROR:", error);
 

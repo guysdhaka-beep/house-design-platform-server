@@ -101,6 +101,11 @@ app.use("/api", (req, res, next) => {
 // --------------------------------------
 // Routes
 // --------------------------------------
+app.use((req, res, next) => {
+  console.log(req.method, req.url);
+  next();
+});
+
 const adminRoutes = require("./routes/adminRoutes");
 const houseRoutes = require("./routes/houseRoutes");
 

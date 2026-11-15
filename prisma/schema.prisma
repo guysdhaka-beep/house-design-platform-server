@@ -26,8 +26,11 @@ model House {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   isFeatured    Boolean        @default(false)
+
   image2d       String?
   image3d       String?
+  videoUrl      String?
+
   area          Float?
   backGarden    Boolean        @default(false)
   balcony       Int            @default(0)
@@ -47,6 +50,7 @@ model House {
   swimmingPool  Boolean        @default(false)
   terrace       Boolean        @default(false)
   widthInches   Int            @default(0)
+
   images        HouseImage[]
   keywords      HouseKeyword[]
 
@@ -78,6 +82,7 @@ model HouseImage {
   fileName    String?
   imageTitle  String?
   keywords    String[] @default([])
+
   house       House    @relation(fields: [houseId], references: [id], onDelete: Cascade)
 
   @@index([houseId])
@@ -91,6 +96,7 @@ model HouseKeyword {
   language  String
   keyword   String
   createdAt DateTime @default(now())
+
   house     House    @relation(fields: [houseId], references: [id], onDelete: Cascade)
 
   @@index([houseId])

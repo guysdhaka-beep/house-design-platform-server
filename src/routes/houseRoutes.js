@@ -42,6 +42,7 @@ router.post(
   upload.fields([
     { name: "image3d", maxCount: 1 },
     { name: "image2d", maxCount: 1 },
+    { name: "video", maxCount: 1 },
   ]),
   createHouse
 );
@@ -54,6 +55,7 @@ router.put(
   upload.fields([
     { name: "image3d", maxCount: 1 },
     { name: "image2d", maxCount: 1 },
+    { name: "video", maxCount: 1 },
   ]),
   updateHouse
 );
