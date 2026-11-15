@@ -658,8 +658,11 @@ exports.getHouse = async (req, res) => {
 // ==========================================
 // UPDATE HOUSE
 // ==========================================
+
 exports.updateHouse = async (req, res) => {
-  console.log("UPDATE API HIT");
+  console.log("========== UPDATE HIT ==========");
+  console.log("FILES:", req.files);
+  console.log("BODY:", req.body);
 
   try {
     const id = Number(req.params.id);

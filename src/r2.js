@@ -8,25 +8,30 @@ const path = require("path");
 
 const r2 = new S3Client({
   region: "auto",
-
   endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-
   credentials: {
     accessKeyId: process.env.R2_ACCESS_KEY_ID,
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
   },
 });
 
-// ===============================
-// Upload Video
-// ===============================
-
+// ===================================
+// Upload Video to Cloudflare R2
+// ===================================
 async function uploadVideoToR2(file) {
+  console.log("========== R2 UPLOAD ==========");
+  console.log("Bucket:", process.env.R2_BUCKET_NAME);
+  console.log("Account:", process.env.R2_ACCOUNT_ID);
+  console.log("File:", file.originalname);
+  console.log("Size:", file.size);
+
   const ext = path.extname(file.originalname);
 
   const key = `videos/${Date.now()}-${Math.random()
     .toString(36)
-    .substring(2)}${ext}`;
+    .slice(2)}${ext}`;
+
+  console.log("Key:", key);
 
   await r2.send(
     new PutObjectCommand({
@@ -37,13 +42,17 @@ async function uploadVideoToR2(file) {
     })
   );
 
-  return `https://${process.env.R2_BUCKET_NAME}.${process.env.R2_ACCOUNT_ID}.r2.dev/${key}`;
+  // Public URL
+  const url = `https://${process.env.R2_PUBLIC_DOMAIN}/${key}`;
+
+  console.log("Upload Success:", url);
+
+  return url;
 }
 
-// ===============================
-// Delete Video
-// ===============================
-
+// ===================================
+// Delete Video from Cloudflare R2
+// ===================================
 async function deleteVideoFromR2(videoUrl) {
   if (!videoUrl) return;
 
@@ -58,6 +67,8 @@ async function deleteVideoFromR2(videoUrl) {
         Key: key,
       })
     );
+
+    console.log("Deleted:", key);
   } catch (err) {
     console.error("Delete R2 Video Error:", err);
   }
