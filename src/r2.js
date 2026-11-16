@@ -21,6 +21,7 @@ const r2 = new S3Client({
 async function uploadVideoToR2(file) {
   console.log("========== R2 UPLOAD ==========");
   console.log("Bucket:", process.env.R2_BUCKET_NAME);
+  console.log("R2_PUBLIC_DOMAIN =", process.env.R2_PUBLIC_DOMAIN);
   console.log("Account:", process.env.R2_ACCOUNT_ID);
   console.log("File:", file.originalname);
   console.log("Size:", file.size);
