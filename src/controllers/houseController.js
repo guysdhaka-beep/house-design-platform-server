@@ -408,6 +408,8 @@ exports.getAllHouses = async (req, res) => {
         width: true,
         foundation: true,
         complete: true,
+        status: true,
+isFeatured: true,
         images: {
           orderBy: {
             sortOrder: "asc",

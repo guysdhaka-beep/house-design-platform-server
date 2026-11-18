@@ -45,6 +45,7 @@ async function uploadVideoToR2(file) {
 
   // Public URL
   const url = `https://${process.env.R2_PUBLIC_DOMAIN}/${key}`;
+  console.log("FINAL URL =", url);
 
   console.log("Upload Success:", url);
 
